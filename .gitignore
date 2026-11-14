@@ -1,4 +1,8 @@
 # Byte-compiled / optimized / DLL files
+.runtime/
+.uv-cache/
+.data/
+.ruff_cache/
 __pycache__/
 *.py[codz]
 *$py.class
