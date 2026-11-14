@@ -11,9 +11,9 @@ export interface Approval {
   approval_id: string; case_id: string; action_id: string; proposed_action: string;
   source_transaction_ref: string; amount_minor: number; currency: string; reason: string;
   evidence_refs: string[]; decision: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
-  expires_at: string; payload_hash: string; reviewer_ref?: string;
+  expires_at: string; payload_hash: string; reviewer_ref?: string; reviewer_comment?: string;
 }
-export type Capability = 'run' | 'messages' | 'approvals' | 'settle' | 'inject_timeout' | 'metrics' | 'evaluations';
+export type Capability = 'run' | 'messages' | 'approvals' | 'settle' | 'inject_timeout' | 'metrics' | 'evaluations' | 'reset';
 export interface Session { actor_id: string; tenant_id: string; role: string; mode: string; capabilities: Capability[] }
 export interface Metrics { total_cases: number; resolved_cases: number; pending_cases: number; escalated_cases: number; approval_cases: number; synthetic: boolean }
 export interface Evaluation {
@@ -26,8 +26,9 @@ export interface Client {
   session(): Promise<Session>; cases(): Promise<Case[]>; detail(id: string): Promise<Case>;
   events(id: string): Promise<Event[]>; run(id: string): Promise<Case>;
   messages(id: string): Promise<Message[]>; send(id: string, text: string): Promise<Case>;
-  approvals(): Promise<Approval[]>; decide(a: Approval, decision: 'APPROVED' | 'REJECTED'): Promise<void>;
+  approvals(): Promise<Approval[]>; decide(a: Approval, decision: 'APPROVED' | 'REJECTED', comment: string): Promise<void>;
   metrics(): Promise<Metrics>; evaluation(): Promise<Evaluation | null>;
   settle(id: string, refund: string): Promise<void>; injectTimeout(id: string): Promise<void>;
+  reset(): Promise<void>;
 }
 

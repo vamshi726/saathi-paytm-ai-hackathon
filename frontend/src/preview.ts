@@ -94,16 +94,18 @@ export function createPreview(storage?: Storage): Client {
       save(); return copy(c);
     },
     approvals: async () => { expire(); return copy(approvals); },
-    decide: async (proposal, decision) => {
+    decide: async (proposal, decision, comment) => {
       expire();
       const a = approvals.find(a => a.approval_id === proposal.approval_id);
       if (!a || a.decision !== 'REQUESTED' || a.payload_hash !== proposal.payload_hash) throw new Error('Approval changed or expired. Refresh the queue.');
-      a.decision = decision; a.reviewer_ref = 'preview-supervisor';
+      if (!comment.trim()) throw new Error('A supervisor comment is required.');
+      a.decision = decision; a.reviewer_ref = 'preview-supervisor'; a.reviewer_comment = comment.trim();
       const c = get(a.case_id);
       if (decision === 'APPROVED') {
-        c.status = 'PENDING_EXTERNAL'; c.refund_ref = 'RF-1042'; c.refund_status = 'INITIATED';
+        c.refund_ref = 'RF-1042'; c.refund_status = 'INITIATED';
         event(c, 'initiate_mock_refund', 'One preview refund initiated after simulated approval.');
-        reply(c, 'Mock refund initiated. This is not confirmation of bank credit.');
+        c.refund_status = 'PROCESSING'; event(c, 'process_mock_refund', 'Preview refund is processing.');
+        c.status = 'RESOLVED'; c.refund_status = 'SUCCEEDED'; event(c, 'verify_refund', 'Preview refund completed successfully.');
       } else {
         c.status = 'ESCALATED'; event(c, 'approval_rejected', 'Supervisor rejected the proposal; no refund created.');
         reply(c, 'Refund proposal rejected. Human support will review this case.');
@@ -119,6 +121,7 @@ export function createPreview(storage?: Storage): Client {
       reply(c, 'The synthetic refund is marked SUCCEEDED in this UI rehearsal. No real funds moved.'); save();
     },
     injectTimeout: async id => { if (get(id).status !== 'NEW' || id !== 'CS-1043') throw new Error('Use a new CS-1043 preview case.'); timeout = [...new Set([...timeout, id])]; save(); },
+    reset: async () => { cases = seed(); traces = {}; chats = {}; approvals = []; timeout = []; save(); },
   };
 }
 

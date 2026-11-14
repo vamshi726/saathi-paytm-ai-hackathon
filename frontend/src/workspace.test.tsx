@@ -33,11 +33,12 @@ describe('support workspace', () => {
     await user.click(await screen.findByRole('button', { name: /Run investigation/ }));
     await user.click(await screen.findByRole('button', { name: /Review approval queue/ }));
     await user.click(screen.getByRole('button', { name: 'Review approval' }));
+    await user.type(screen.getByLabelText('Approval comment'), 'Duplicate payment verified.');
     await user.click(screen.getByRole('button', { name: 'Confirm approval' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Review approval' })).toBeNull());
     await user.click(screen.getByRole('button', { name: /Case inbox/ }));
-    await waitFor(() => expect(screen.getAllByText(/Mock refund initiated/).length).toBeGreaterThan(0));
-    expect(screen.getByText('initiated')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText(/Preview refund completed successfully/).length).toBeGreaterThan(0));
+    expect(screen.getByText('succeeded')).toBeTruthy();
   });
   it('never presents browser rehearsal as measured evaluation', async () => {
     const user = userEvent.setup();
@@ -53,9 +54,9 @@ describe('preview and transport boundaries', () => {
     await client.run('CS-1042');
     const resumed = createPreview(sessionStorage);
     const [approval] = await resumed.approvals();
-    await resumed.decide(approval, 'APPROVED');
-    await expect(resumed.decide(approval, 'APPROVED')).rejects.toThrow();
-    expect((await resumed.detail('CS-1042')).status).toBe('PENDING_EXTERNAL');
+    await resumed.decide(approval, 'APPROVED', 'Duplicate capture verified.');
+    await expect(resumed.decide(approval, 'APPROVED', 'Duplicate capture verified.')).rejects.toThrow();
+    expect((await resumed.detail('CS-1042')).status).toBe('RESOLVED');
     expect((await resumed.events('CS-1042')).filter(e => e.stage === 'initiate_mock_refund')).toHaveLength(1);
   });
   it('expires approvals without a write', async () => {
@@ -63,7 +64,7 @@ describe('preview and transport boundaries', () => {
     await client.run('CS-1042');
     const [a] = await client.approvals();
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse(a.expires_at) + 1);
-    await expect(client.decide(a, 'APPROVED')).rejects.toThrow();
+    await expect(client.decide(a, 'APPROVED', 'Approved after review.')).rejects.toThrow();
     expect((await client.detail('CS-1042')).status).toBe('ESCALATED');
     expect((await client.events('CS-1042')).some(e => e.stage === 'initiate_mock_refund')).toBe(false);
   });
@@ -76,15 +77,15 @@ describe('preview and transport boundaries', () => {
     expect((await client.events('CS-1043')).filter(e => e.stage === 'reconcile_order')).toHaveLength(1);
     expect((await client.run('CS-1044')).status).toBe('PENDING_EXTERNAL');
     await client.run('CS-1042');
-    await client.decide((await client.approvals())[0], 'REJECTED');
+    await client.decide((await client.approvals())[0], 'REJECTED', 'Needs manual review.');
     expect((await client.detail('CS-1042')).refund_ref).toBeUndefined();
   });
-  it('uses authenticated requests, surfaces denial and never retries writes', async () => {
+  it('uses open local requests, surfaces denial and never retries writes', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status: 403 }));
     vi.stubGlobal('fetch', fetcher);
-    await expect(createApi(async () => 'test-token').run('CS-1043')).rejects.toThrow('server-assigned role');
+    await expect(createApi().run('CS-1043')).rejects.toThrow('not available');
     expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls[0][1].headers.Authorization).toBe('Bearer test-token');
+    expect(fetcher.mock.calls[0][1].headers).toBeUndefined();
   });
   it('computes explicitly assumed savings', () => {
     expect(savings(100000, .3)).toEqual({ grossRupees: 1200000, grossHours: 3000 });
