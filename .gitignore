@@ -1,8 +1,4 @@
 # Byte-compiled / optimized / DLL files
-.runtime/
-.uv-cache/
-.data/
-.ruff_cache/
 __pycache__/
 *.py[codz]
 *$py.class
@@ -79,6 +75,10 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
+
+agents/
+*.md
+agents/
 
 # Jupyter Notebook
 .ipynb_checkpoints
