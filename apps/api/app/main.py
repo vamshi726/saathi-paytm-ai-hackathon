@@ -43,6 +43,31 @@ def create_app(db_path: str | None = None, demo_token: str | None = None) -> Fas
     def health():
         return {"status": "ok", "mode": "synthetic-deterministic"}
 
+    @app.get("/api/session")
+    def session(actor: Annotated[Actor, Depends(authenticate)]):
+        # UI hints only: each action still enforces its own backend authorization.
+        capabilities = ["metrics"]
+        if actor.role in {"support", "supervisor"}:
+            capabilities.append("run")
+        return {
+            **actor.model_dump(),
+            "mode": "synthetic-deterministic",
+            "capabilities": capabilities,
+        }
+
+    @app.get("/api/metrics")
+    def metrics(actor: Annotated[Actor, Depends(authenticate)]):
+        with store.connect() as db:
+            records = [Case.model_validate(r) for r in Store.list(db, "case", actor.tenant_id)]
+        return {
+            "total_cases": len(records),
+            "resolved_cases": sum(r.status == "RESOLVED" for r in records),
+            "pending_cases": sum(r.status == "PENDING_EXTERNAL" for r in records),
+            "escalated_cases": sum(r.status == "ESCALATED" for r in records),
+            "approval_cases": sum(r.status == "NEEDS_APPROVAL" for r in records),
+            "synthetic": True,
+        }
+
     @app.get("/api/cases", response_model=list[Case])
     def cases(
         actor: Annotated[Actor, Depends(authenticate)],

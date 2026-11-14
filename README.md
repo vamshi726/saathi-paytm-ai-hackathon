@@ -51,5 +51,50 @@ concurrent execution, restart persistence, failed verification and rollback.
 - A configured demo token maps to one server-defined support identity and tenant.
   This is local mock authentication, not Clerk or production authentication.
 - Audit events contain fixed descriptions and synthetic references, not tokens.
-- Only CS-1043 is seeded. Refunds, approvals, multi-turn chat, React, reflection,
+- Only CS-1043 is seeded. Backend refunds, approvals, multi-turn chat, reflection,
   and the 40-case evaluation remain planned in [plan.md](plan.md).
+
+## Sai Teja's frontend
+
+React + TypeScript + Tailwind workspace is in `frontend`.
+Install Node.js 22.12+ and run in a second terminal:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open http://127.0.0.1:5173. Start the API with the instructions above and enter
+your local demo token in the connection screen. Vite proxies /api to port 8000.
+Tokens stay in memory, not localStorage, source files or VITE_ variables.
+The connected workspace runs CS-1043, displays persisted audit events, searches
+cases, and reports tenant-scoped counts. Refresh retrieves backend state.
+
+**UI rehearsal** is a separately selected, browser-only simulator for five
+primary cases and RISK-HISTORY-02. It exercises clarification (reply ORD-2046),
+approval/rejection/expiry, pending refund, simulated settlement and a verification
+timeout. It does not run agents or produce evaluation evidence. Its synthetic
+state persists in sessionStorage for this tab; close the tab to start fresh.
+No fallback to rehearsal occurs on an API failure.
+
+```powershell
+cd frontend
+npm test
+npm run build
+```
+
+See [frontend handoff](docs/frontend-handoff.md) for scenario walkthroughs,
+backend contracts, Clerk configuration and remaining integration dependencies.
+
+On this checkout, portable Node is available without a system install:
+
+```powershell
+# From the repository root
+$env:PATH = (Resolve-Path '.runtime/node-v22.23.5-win-x64').Path + ';' + $env:PATH
+npm --prefix frontend run dev
+```
+
+Validation completed: 16 backend tests, 9 frontend tests and 2 Chromium tests
+passed; production build and backend lint passed. Browser checks cover actual
+CS-1043 API reconciliation and mobile rehearsal/reload.

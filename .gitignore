@@ -222,3 +222,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Frontend dependencies and local configuration
+node_modules/
+.env.local
+.env.*.local
+*.tsbuildinfo
+
+# Browser test output
+frontend/test-results/
+frontend/playwright-report/
